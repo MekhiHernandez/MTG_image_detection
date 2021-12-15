@@ -28,7 +28,7 @@ def activation_forward(A_prev, W, b, activation):
     Z, linear_cache = linear_forward(A_prev, W, b) #cached just currently contains A_prev
     if activation == 'relu':
         A, activation_cache = relu(Z)
-    if activation == 'sigmoid':
+    elif activation == 'sigmoid':
         A, activation_cache = sigmoid(Z)
     cached = (linear_cache, activation_cache) # linear_cache = (A_prev, W, b), activation_cache = Z
     return A, cached #returns A, ((A_prev, W, b), Z)
@@ -36,8 +36,45 @@ def activation_forward(A_prev, W, b, activation):
 def model_forward(X, params):
     parameters = params.copy()
     L = len(parameters)//2
-    for l in reversed(range(L)):
-        A, cached = activation_forward(X, parameters['W'+str(l)], parameters['b'+str(l)])
+    A_prev = X
+    caches = []
+    for l in reversed(range(L-1)):
+        A_prev, cache = activation_forward(A_prev, parameters['W'+str(l+1)], parameters['b'+str(l+1)])
+        caches.append(cache) #Caches will be a two column vector with the first column containing (A_prev, W, b) and the second containing Z
+    AL, cache = activation_forward(A_prev, parameters['W'+str(L)], parameters['b'+str(L)])
+    caches.append(cache)
+    return AL, caches
+
+def compute_cost(AL, Y):
+    m = Y.shape[1]
+    cost = -(1/m)*(np.sum(Y*np.log(AL))+np.sum((1-Y)*np.log(1-AL)))
+    return cost
+
+def sigmoid_backward(dA, cache):
+    Z = cache
+    s = sigmoid(Z)
+    dZ = dA*s*(1-s) #dZ (dL/dZ) is computed by running dL/dA * dA/dZ
+    return dZ
+
+def relu_backward(dA, cache):
+    Z = cache
+    dZ = np.array(dA, copy=True)
+    dZ[Z<0] = 0 #dZ (dL/dZ) is computed by running dL/dA*dA/dZ. Where Z > 0, derivative of relu is 1, where Z<0, d/dZ of relu is 0, so when the functions are multiplied, where Z is less than zero d 
+    return dZ
+
+def linear_backward(dZ, cache): #need to figure this out still
+    A_prev, W, b = cache
+    m = A_prev.shape(1)
+    dA_prev = (1/m)*dZ*W
+    dW = (1/m)*dZ*A_prev
+
+def activation_backward(dA, cache, activation):
+    if activation == 'relu':
+        dZ = relu_backward(dA, cache)
+    elif activation == 'sigmoid':
+        dZ = sigmoid_backward(dA, cache)
+    return dZ
+
 
 
         
