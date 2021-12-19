@@ -62,18 +62,30 @@ def relu_backward(dA, cache):
     dZ[Z<0] = 0 #dZ (dL/dZ) is computed by running dL/dA*dA/dZ. Where Z > 0, derivative of relu is 1, where Z<0, d/dZ of relu is 0, so when the functions are multiplied, where Z is less than zero d 
     return dZ
 
-def linear_backward(dZ, cache): #need to figure this out still
+def linear_backward(dZ, cache): 
     A_prev, W, b = cache
     m = A_prev.shape(1)
-    dA_prev = (1/m)*dZ*W
-    dW = (1/m)*dZ*A_prev
+    dA_prev = (1/m)*np.dot(W.T, dZ) 
+    dW = (1/m)*np.dot(dZ, A_prev.T)
+    db = (1/m)*np.sum(dZ, axis = 1, keepdims = True)
+    return dA_prev, dW, db
 
-def activation_backward(dA, cache, activation):
+def activation_backward(dZ, caches, activation):
+    linear_cache, activation_cache = caches
     if activation == 'relu':
-        dZ = relu_backward(dA, cache)
+        dA, dW_prev, db_prev = linear_backward(dZ, linear_cache)
+        dZ_prev = relu_backward(dA, activation_cache)
     elif activation == 'sigmoid':
-        dZ = sigmoid_backward(dA, cache)
-    return dZ
+        dA, dW_prev, db_prev= linear_backward(dZ, linear_cache)
+        dZ_prev = sigmoid_backward(dA, activation_cache)
+    newcache = (dA, dW_prev, db_prev)
+    return dZ_prev, newcache #newcache = (dA_prev, dW_prev, db_prev) for give input dZ
+
+def model_backward(AL, Y, caches):
+    m = Y.shape[1]
+    dAL = (1/m)*np.sum(-np.divide(Y, AL)+np.divide(1-Y,1-AL))
+    linear_cache, activation_cache = caches
+    activation_backward()
 
 
 
