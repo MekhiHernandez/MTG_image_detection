@@ -70,22 +70,40 @@ def linear_backward(dZ, cache):
     db = (1/m)*np.sum(dZ, axis = 1, keepdims = True)
     return dA_prev, dW, db
 
-def activation_backward(dZ, caches, activation):
+def activation_backward(dA, caches, activation):
     linear_cache, activation_cache = caches
     if activation == 'relu':
-        dA, dW_prev, db_prev = linear_backward(dZ, linear_cache)
-        dZ_prev = relu_backward(dA, activation_cache)
+        dZ = relu_backward(dA, activation_cache)
+        dA_prev, dW, db = linear_backward(dZ, linear_cache)
     elif activation == 'sigmoid':
-        dA, dW_prev, db_prev= linear_backward(dZ, linear_cache)
-        dZ_prev = sigmoid_backward(dA, activation_cache)
-    newcache = (dA, dW_prev, db_prev)
-    return dZ_prev, newcache #newcache = (dA_prev, dW_prev, db_prev) for give input dZ
+        dZ = sigmoid_backward(dA, activation_cache)
+        dA_prev, dW, db = linear_backward(dZ, linear_cache)
+    return dA_prev, dW, db 
 
-def model_backward(AL, Y, caches):
-    m = Y.shape[1]
-    dAL = (1/m)*np.sum(-np.divide(Y, AL)+np.divide(1-Y,1-AL))
-    linear_cache, activation_cache = caches
-    activation_backward()
+def model_backward(AL, Y, caches): 
+    L = len(caches) #caches have length 1 less than number of layers, example 5 layer model, L = 4
+    Y = Y.reshape(AL.shape)
+    grads = {}
+    dAL = -np.divide(Y, AL)+np.divide(1-Y,1-AL)
+    dA_prev, dW, db = activation_backward(dAL, caches[L-1], activation = 'sigmoid')# caches[3]
+    grads['dA'+str(L-1)] = dA_prev #dA3
+    grads['dW'+str(L)] = dW #dW4
+    grads['db'+str(L)] = db #db4
+    for l in reversed(range(L-1)): # in range 2,1,0
+        dA_prev, dW, db = activation_backward(grads['dA'+str(l+1)], caches[l], activation = 'relu')
+        grads['dA'+str(l)] = dA_prev #dA2
+        grads['dW'+str(l+1)] = dW #dW3
+        grads['db'+str(l+1)] = db #db3
+    return grads
+
+def update_parameters(parameters, grads, learning_rate):
+    L = len(parameters)//2
+    params = parameters.copy()
+    for l in range(L): # 0,1,2
+        params['W'+str(l+1)] = params['W'+str(l+1)] - learning_rate*grads['dW'+str(l+1)]
+        params['b'+str(l+1)] = params['b'+str(l+1)] - learning_rate*grads['db'+str(l+1)]
+    return params
+
 
 
 
