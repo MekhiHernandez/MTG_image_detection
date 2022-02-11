@@ -7,14 +7,17 @@ def relu(Z):
 
 def sigmoid(Z):
     A =  1/(1+np.exp(-Z))
+    print(type(A))
     cache = Z
     return A, cache
 
+def softmax(AL): # needs work
+    return AL
 def initialize_params(dimensions):
-    L = len(dimensions) #imagine this is 4
+    L = len(dimensions) #imagine this is 3
     parameters = {}
     for l in range(1,L): # for n in 1,2,3
-        parameters['W'+str(l)] = np.random.randn(dimensions[l], dimensions[l-1]) /np.sqrt(dimensions[0]) #30,2000
+        parameters['W'+str(l)] = np.random.randn(dimensions[l], dimensions[l-1])/np.sqrt(dimensions[0]) #30,2000
         parameters['b'+str(l)] = np.zeros((dimensions[l], 1))
     return parameters
 
@@ -25,13 +28,11 @@ def linear_forward(A, W, b):
 
 def activation_forward(A_prev, W, b, activation):
     
+    Z, linear_cache = linear_forward(A_prev, W, b) #cached just currently contains A_prev
     if activation == 'relu':
-        Z, linear_cache = linear_forward(A_prev, W, b)
         A, activation_cache = relu(Z)
     elif activation == 'sigmoid':
-        Z, linear_cache = linear_forward(A_prev, W, b)
         A, activation_cache = sigmoid(Z)
-        
     cached = (linear_cache, activation_cache) # linear_cache = (A_prev, W, b), activation_cache = Z
     return A, cached #returns A, ((A_prev, W, b), Z)
 
@@ -40,23 +41,22 @@ def model_forward(X, params):
     L = len(parameters)//2 #number of layers-1 = 3 in this case
     A = X
     caches = []
-    for l in range(1,L): # for 1,2
+    for l in range(L): # for 0,1,2
         A_prev = A
-        A, cache = activation_forward(A_prev, parameters['W'+str(l)], parameters['b'+str(l)], activation = 'relu')
+        A, cache = activation_forward(A_prev, parameters['W'+str(l+1)], parameters['b'+str(l+1)], activation = 'relu')
         caches.append(cache) #Caches will be a two column vector with the first column containing (A_prev, W, b) and the second containing Z
-    AL, cache = activation_forward(A, parameters['W'+str(L)], parameters['b'+str(L)], activation = 'sigmoid')
+    AL, cache = activation_forward(A_prev, parameters['W'+str(L)], parameters['b'+str(L)], activation = 'sigmoid')
     caches.append(cache)
     return AL, caches
 
 def compute_cost(AL, Y):
     m = Y.shape[1]
-    cost = (1/m)*(-np.dot(Y,np.log(AL).T)-np.dot(1-Y,np.log(1-AL).T))
-    cost = np.squeeze(cost)
+    cost = -(1/m)*(np.sum(Y*np.log(AL))+np.sum((1-Y)*np.log(1-AL)))
     return cost
 
 def sigmoid_backward(dA, cache):
     Z = cache
-    s, cache = sigmoid(Z)
+    s = sigmoid(Z)
     dZ = dA*s*(1-s) #dZ (dL/dZ) is computed by running dL/dA * dA/dZ
     return dZ
 
@@ -85,20 +85,20 @@ def activation_backward(dA, caches, activation):
     return dA_prev, dW, db 
 
 def model_backward(AL, Y, caches): 
-    L = len(caches) #caches have length 1 less than number of layers, example 4 layer model, L = 3
+    L = len(caches) #caches have length 1 less than number of layers, example 5 layer model, L = 4
+    # print(AL.shape, Y.shape)
     Y = Y.reshape(AL.shape)
     grads = {}
     dAL = -np.divide(Y, AL)+np.divide(1-Y,1-AL)
-    
     dA_prev, dW, db = activation_backward(dAL, caches[L-1], activation = 'sigmoid')# caches[3]
-    grads['dA'+str(L-1)] = dA_prev #dA2
-    grads['dW'+str(L)] = dW #dW3
-    grads['db'+str(L)] = db #db3
-    for l in reversed(range(L-1)): # in range 1,0
+    grads['dA'+str(L-1)] = dA_prev #dA3
+    grads['dW'+str(L)] = dW #dW4
+    grads['db'+str(L)] = db #db4
+    for l in reversed(range(L-1)): # in range 2,1,0
         dA_prev, dW, db = activation_backward(grads['dA'+str(l+1)], caches[l], activation = 'relu')
-        grads['dA'+str(l)] = dA_prev #dA1
-        grads['dW'+str(l+1)] = dW #dW2
-        grads['db'+str(l+1)] = db #db2
+        grads['dA'+str(l)] = dA_prev #dA2
+        grads['dW'+str(l+1)] = dW #dW3
+        grads['db'+str(l+1)] = db #db3
     return grads
 
 def update_parameters(parameters, grads, learning_rate):
